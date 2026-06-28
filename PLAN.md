@@ -1,6 +1,6 @@
 # PLAN — revolutionary-patriots-kg
 
-> Status: Draft · Version: 0.1.0 · Last updated: 2026-06-28 · Owner: TBD (maintainer) · Lane: donated
+> Status: Draft · Version: 0.2.0 · Last updated: 2026-06-28 · Owner: TBD (maintainer) · Lane: donated
 
 An open, linked, citable knowledge graph of American Revolution patriots — people, military
 service, units, engagements, places, kinship, and the documentary sources that prove each claim —
@@ -92,10 +92,19 @@ Outcome-based, beneficiary-centric. Baselines are zero at project start unless n
 | Share of published assertions carrying a resolvable provenance link | n/a | 100% (hard gate; un-sourced assertions are not published) |
 | Distinct public-domain source collections integrated | 0 | ≥ 4 (NARA + Founders Online + LoC + ≥1 state archive / PD lineage book) |
 | Person nodes reconciled to a Wikidata QID | 0 | ≥ 40% of published persons |
+| Dedup/merge precision (false-merge rate in audit sample) | n/a | **zero confirmed false merges** in the audit sample (coverage without precision corrupts the graph) |
+| Conflict-faithful representation (contested facts retaining ≥2 sourced variants) | n/a | 100% — no single-winner assertion ships without a sourced editorial rationale |
 | Educational/historical partners adopting or citing the graph | 0 | ≥ 1 committed steward; ≥ 1 citation/use |
 | Authorized DAR/SAR engagement | none | ≥ 1 documented contact / MoU discussion (outcome may be "declined," recorded honestly) |
-| Data-quality: sampled assertions passing citation review | n/a | ≥ 95% of a random audit sample verify against the cited source |
+| Data-quality: sampled assertions passing citation review | n/a | ≥ 95% of a **stratified** audit sample verify against the cited source (see sampling frame below) |
 | Reuse: external queries / downloads of exports | 0 | tracked from M2; growth trend reported quarterly |
+
+**Citation-audit sampling frame (pins the data-quality metric).** The ≥95% target is meaningless
+without a defined sample, so the audit uses: a **minimum sample size** of 200 assertions per release
+(or the whole release if smaller); **stratified sampling** across strata defined by *source batch*
+and by *extraction method* (human transcription vs. OCR vs. structured import), so no source or
+method escapes review; and an **auditor independent of the extractor** of the sampled records (no
+self-grading). The dedup-precision audit draws its own stratified sample of proposed/confirmed merges.
 
 We explicitly **do not** treat raw node count, PRs merged, or commits as success. A large graph with
 weak provenance is a failure under this plan.
@@ -134,14 +143,24 @@ A **data/content pipeline** project (with supporting code), not a hosted service
    properties, mapped to schema.org and Wikidata properties wherever an equivalent exists. Published
    as an OWL/SHACL + human-readable spec.
 3. **Extraction** — per-source extractors turn primary documents (e.g., a NARA pension-file batch)
-   into typed records. Where OCR/transcription is involved, the transcription and the source image
-   citation are both retained. Extraction is **assistive**; ambiguous fields are flagged for human
-   review, never guessed.
+   into typed records. A **per-source extraction-method policy** governs how each source is read:
+   **human transcription for handwritten manuscripts** (pension depositions, service abstracts);
+   **OCR only for machine-print public-domain books** (copyright-expired lineage volumes). Each
+   source's method is recorded in its allow-list entry and carried into provenance. A documented
+   **transcription-accuracy baseline** (character/field-level acceptance threshold per method) gates
+   a batch before normalization. Where OCR/transcription is involved, the transcription and the
+   source image citation are both retained. Extraction is **assistive**; ambiguous fields are
+   flagged for human review, never guessed.
 4. **Normalization & provenance binding** — records are mapped to ontology entities; **every
    assertion is wrapped with a provenance statement** (source document IRI + license + extraction
    method + confidence) using a reification / named-graph / RDF-star pattern (decision below).
 5. **Reconciliation & dedup** — candidate matches against Wikidata (QIDs) and within-graph
-   duplicates are proposed automatically and **confirmed by a human reviewer** before merge.
+   duplicates are proposed automatically and **confirmed by a human reviewer** before merge. Matching
+   uses an explicit **blocking-key strategy** (e.g., normalized surname + service state/unit + service
+   period) to generate candidate pairs without an all-pairs comparison, with the matcher tuned for
+   **precision over recall**. The bar is **zero confirmed false merges** in the audit sample: a wrong
+   merge silently corrupts the graph, so missing a merge (recoverable later) is preferred to making a
+   bad one. Merges remain reversible and retain both records' provenance.
 6. **Validation** — SHACL shape validation + provenance-completeness check (CI gate: no assertion
    without provenance).
 7. **Publish** — versioned RDF/Turtle + JSON-LD dumps, a SPARQL-or-static query surface, and a
@@ -169,10 +188,16 @@ A **data/content pipeline** project (with supporting code), not a hosted service
   source-conflicting kinship claims.
 
 **Key decisions (to ratify in M0)**
-- **Provenance mechanism:** RDF-star vs. named graphs vs. PROV-O reification — pick one and apply
-  uniformly. (Leaning: named graphs + PROV-O for tool compatibility; RDF-star evaluated.)
-- **IRI scheme & persistence:** stable, dereferenceable IRIs under a project namespace; a
-  redirect/persistence plan tied to the eventual steward/host.
+- **Provenance mechanism & assertion unit:** RDF-star vs. named graphs vs. PROV-O reification — pick
+  one and apply uniformly. (Leaning: named graphs + PROV-O for tool compatibility; RDF-star
+  evaluated.) The same decision **defines the countable "assertion"** — the unit the 100%-provenance
+  CI gate measures (e.g., one named graph / one reified statement / one RDF-star triple) — so
+  "provenance on every assertion" is mechanically checkable rather than aspirational.
+- **IRI scheme & persistence:** stable, dereferenceable IRIs under a project namespace. IRI minting
+  is **decoupled from the (unsecured) steward**: M0 commits to a **host-independent persistent
+  identifier** (w3id.org or a PURL) as the canonical namespace, redirecting to whatever host serves
+  the graph. This way identifiers stay stable even if the steward changes or is never secured, and no
+  IRI is ever minted under a host we do not control.
 - **Conflict representation:** every contested fact retains all sourced variants with provenance;
   no single "winner" is asserted without an editorial, sourced rationale.
 
@@ -193,12 +218,29 @@ A compiled database can carry copyright in its selection/arrangement even where 
 underlying facts are public; ToS can independently bar copying. We assume both protections apply and
 **do not touch these systems** absent an explicit written agreement.
 
+**Closing the citation-laundering hole.** A contributor could copy a GRS/PRS entry and back-fill a
+plausible-looking public-domain citation. Three controls make that detectable and unacceptable:
+- **Page/image-level citations are required** — a citation must point to the specific page or document
+  image actually consulted, never to a collection or database as a whole. Collection-level citations
+  are rejected at review.
+- **Contributor attestation of independent sourcing** — each contributed batch carries a signed
+  attestation that the facts were read from the cited public-domain source directly, not transcribed
+  or derived from GRS/PRS or any proprietary compilation.
+- **Spot-checks for GRS/PRS-distinctive compiled fields** — reviewers sample for tell-tale artifacts
+  of the proprietary compilations (their distinctive normalizations, derived/editorial fields, or
+  arrangement) that would not appear in the raw underlying record; a hit triggers rejection and a
+  flag.
+
 ### Approved sources (public domain / openly licensed only)
 Every source must be entered in `sources/allowlist.yml` with a recorded license/PD basis and an
 `approved` status before use:
 - **U.S. National Archives (NARA)** — Revolutionary War **pension & bounty-land warrant application
   files** and **compiled military service records**. U.S. federal government works → **public
-  domain** (the records themselves; verify the specific digitization's terms).
+  domain** (the records themselves; verify the specific digitization's terms). **Hard M1 entry
+  precondition:** the exact NARA access path supplying the M1 batch must be named and shown to deliver
+  **PD-clear digitizations** served by NARA itself (e.g., the NARA Catalog) — **not** copies behind
+  Fold3/Ancestry terms, whose scans and indexes carry their own restrictions. M1 extraction may not
+  begin until this is recorded as cleared in the allow-list.
 - **Founders Online** (National Archives / NHPRC) — public domain.
 - **Library of Congress** — public-domain manuscript and print collections (verify per item).
 - **State archives / state historical societies** — public-domain records (verify per repository).
@@ -214,9 +256,11 @@ copyrighted scan, transcription, or index; "public domain" must be verified for 
 and edition* used, not assumed from the original's age. Each allow-list entry records this analysis.
 
 ### Provenance model
-- **Every assertion** links to its source Document IRI and records that source's license/PD basis,
-  the extraction method (human transcription / OCR / structured import), and a confidence value.
-- Un-sourced assertions are **never published** — enforced as a CI validation gate.
+- **Every assertion** links to its source Document IRI at **page/image-level granularity** (not the
+  collection) and records that source's license/PD basis, the extraction method (human transcription /
+  OCR / structured import), and a confidence value.
+- Un-sourced assertions are **never published** — enforced as a CI validation gate over the countable
+  assertion unit fixed by the provenance-mechanism decision.
 - Conflicting sources are retained side by side with their respective provenance.
 
 ### Privacy / PII stance
@@ -267,15 +311,23 @@ license.
 Goal: establish the rails so no data work can bypass the license/provenance gates.
 Exit criteria: (a) ontology v0 published covering the 7 classes mapped to schema.org/Wikidata;
 (b) `sources/allowlist.yml` schema defined with ≥3 sources analyzed and ≥1 `approved`;
-(c) provenance mechanism decision ratified; (d) CI provenance-completeness + SHACL lint scaffolded;
-(e) partner/steward outreach started and DAR/SAR contact attempted (status logged).
+(c) provenance mechanism decision ratified, **including the countable "assertion" unit** the CI gate
+measures; (d) CI provenance-completeness + SHACL lint scaffolded; (e) partner/steward outreach started
+and DAR/SAR contact attempted (status logged); (f) a **qualified License/ToS reviewer named** (hard
+exit; documented fallback if the seat is empty — M0 cannot exit and escalation begins); (g) a
+**host-independent persistent identifier (w3id.org/PURL) committed** as the canonical IRI namespace,
+decoupled from the unsecured steward.
 
 **M1 — First sourced slice (proof of pipeline).**
 Goal: end-to-end one batch from one approved NARA source into the graph with full provenance.
-Exit criteria: (a) ≥1 NARA pension/service batch extracted into Person/Service/Unit/Document nodes;
-(b) 100% of new assertions carry provenance and pass CI; (c) citation-review audit of a sample ≥95%
-verified; (d) JSON-LD + Turtle export produced; (e) ≥1 candidate steward identified and in
-conversation. Depends on M0.
+**Hard entry precondition:** the NARA access path for the M1 batch is named and recorded as supplying
+PD-clear digitizations (NARA-served, **not** Fold3/Ancestry-terms copies) before extraction starts.
+Exit criteria: (a) ≥1 NARA pension/service batch extracted into Person/Service/Unit/Document nodes
+(per the per-source extraction-method policy: human transcription for handwritten files);
+(b) 100% of new assertions carry provenance and pass CI; (c) **stratified** citation-review audit
+(min sample size; by source-batch and extraction method; independent auditor) ≥95% verified;
+(d) JSON-LD + Turtle export produced under the persistent-identifier namespace; (e) ≥1 candidate
+steward identified and in conversation. Depends on M0.
 
 **M2 — Reconciliation & explorer (usable surface).**
 Goal: make the graph discoverable, linked, and browsable.
@@ -301,7 +353,12 @@ provenance guardrails before any bulk extraction begins.
 
 - **Maintainer / Owner:** TBD — accountable for scope, the licensing gate, and releases.
 - **License/ToS reviewer:** TBD — must approve every `sources/allowlist.yml` entry; has veto over
-  any source. (Mandatory given medium risk tier; primary gate.)
+  any source. (Mandatory given medium risk tier; primary gate.) **Naming a qualified person to this
+  seat is a hard M0 exit criterion** — the licensing gate is the project's headline control and cannot
+  rest on an empty seat. **Documented fallback if the seat is empty:** no source advances past
+  `pending` and no extraction begins; M0 cannot exit; the maintainer escalates to Elyos
+  governance/board to source a qualified reviewer (and may engage qualified pro-bono counsel) before
+  any data work proceeds.
 - **Domain / accuracy reviewers (rotation):** historians or experienced genealogists who perform
   citation review. TO BE SECURED.
 - **Steward (last-mile owner):** the educational/historical partner who adopts, hosts long-term, and
@@ -327,12 +384,14 @@ provenance guardrails before any bulk extraction begins.
 
 | Risk | Likelihood | Impact | Mitigation | Owner |
 | --- | --- | --- | --- | --- |
-| Contributor scrapes/imports DAR GRS or SAR PRS data | Medium | Critical (legal/ToS, project-ending) | Hard out-of-scope rule; allow-list gate blocks un-approved sources; license reviewer veto; CI rejects sources not marked `approved`; refusal + flag per guardrails | License reviewer |
+| Contributor scrapes/imports DAR GRS or SAR PRS data (incl. laundered via a fake PD citation) | Medium | Critical (legal/ToS, project-ending) | Hard out-of-scope rule; allow-list gate blocks un-approved sources; license reviewer veto; CI rejects sources not marked `approved`; **anti-laundering controls — page/image-level citations, contributor attestation of independent sourcing, and spot-checks for GRS/PRS-distinctive compiled fields**; refusal + flag per guardrails | License reviewer |
 | "Public-domain" source actually wrapped in a copyrighted scan/index | Medium | High | Per-copy/edition rights analysis recorded in allow-list; verify the specific digitization, not just the original's age | License reviewer |
 | No steward/partner secured → "delivered ≠ merged" not met | High | High | Treat partner outreach as an M0/M1 deliverable; log status honestly; multiple candidate stewards pursued | Maintainer |
 | Inaccurate transcription / mis-citation / invented facts | Medium | High | Mandatory citation-review sampling; provenance-completeness CI gate; assistive (not autonomous) extraction; gaps stay gaps | Domain reviewer |
 | Inadvertent inclusion of living-person data | Low | High (privacy guardrail) | Deceased-only scope rule; exclude modern application/member data; review checklist | License/domain reviewers |
-| Conflicting historical records flattened into one "truth" | Medium | Medium | Conflict-preserving data model; reviewers reject single-winner assertions lacking sourced rationale | Domain reviewer |
+| Conflicting historical records flattened into one "truth" | Medium | Medium | Conflict-preserving data model; reviewers reject single-winner assertions lacking sourced rationale; conflict-faithful metric tracked | Domain reviewer |
+| Bad/false merges corrupt the graph (precision failure) | Medium | High | Precision-over-recall matcher; explicit blocking-key strategy; human-confirmed, reversible merges; zero-confirmed-false-merge audit target | Domain reviewer |
+| Reviewer capacity exhausted / burnout (license + citation review become bottleneck) | Medium | High | Sampling-based review (not 100% manual re-check); reviewer rotation with a response-time SLA; a documented throughput ceiling that throttles intake when review backlog exceeds it | Maintainer |
 | Wikipedia (CC BY-SA) text contaminates a CC0 dataset | Medium | Medium | Prefer Wikidata (CC0); label CC BY-SA-derived statements; dataset-level license honesty | Maintainer |
 | IRI/host instability breaks dereferenceable links | Medium | Medium | Persistence plan tied to steward; stable namespace + redirect strategy | Maintainer |
 | DAR/SAR decline partnership | Medium | Low | Public-domain path is fully self-sufficient; partnership is upside, not a dependency | DAR/SAR liaison |
@@ -355,7 +414,13 @@ provenance guardrails before any bulk extraction begins.
 ## Sustainability & maintenance
 
 - **After delivery,** the maintainer plus the secured steward own ongoing curation; the steward
-  provides long-term hosting and a persistent IRI home for the graph.
+  provides long-term hosting, while the **canonical persistent identifier (w3id.org/PURL) is owned by
+  the project, not the host** — so identifiers survive a steward change and the graph is never orphaned
+  if the steward seat turns over.
+- **Reviewer sustainability:** review runs on **sampling, not exhaustive re-checking**; reviewers work
+  a **rotation with a response-time SLA**; and a **documented throughput ceiling** throttles new
+  extraction intake when the review backlog exceeds it, so quality gates never silently degrade under
+  load.
 - **Outcome tracking:** quarterly report on sourced-node growth, provenance completeness (must stay
   100%), reconciliation coverage, citation-audit pass rate, partner adoptions, and reuse/downloads.
 - **Contributions** continue via the donated lane with the same license + citation review gates.
@@ -367,11 +432,15 @@ provenance guardrails before any bulk extraction begins.
 
 - Who is the committed steward / adopting partner? (TO BE SECURED — blocks "shipped.")
 - Will DAR and/or SAR engage on an authorized data-sharing arrangement, and on what terms?
-- Final provenance mechanism: named graphs + PROV-O vs. RDF-star?
-- IRI namespace and long-term persistence/host?
-- Which NARA collection/batch is the M1 starting slice, and what are its exact digitization terms?
+- Final provenance mechanism: named graphs + PROV-O vs. RDF-star? (The countable assertion unit is
+  fixed by whichever is chosen — decided in M0.)
 - Dataset license default: CC0-only with CC BY-SA segregated, or CC BY-SA overall?
-- Who staffs the domain-reviewer rotation, and what is the minimum citation-audit sample size?
+- Who staffs the domain-reviewer rotation? (Minimum citation-audit sample size is now pinned at ≥200
+  with a stratified, independent-auditor frame; rotation staffing remains open.)
+
+*Resolved since v0.1.0:* the IRI namespace is now committed to a host-independent persistent
+identifier (w3id.org/PURL) in M0; and the M1 NARA access path / digitization terms are no longer an
+open question but a hard M1 entry precondition (must be PD-clear and NARA-served, not Fold3/Ancestry).
 
 ## References
 

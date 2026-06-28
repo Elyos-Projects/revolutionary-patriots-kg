@@ -1,6 +1,6 @@
 # TASKS — revolutionary-patriots-kg
 
-> Status: Draft · Version: 0.1.0 · Last updated: 2026-06-28 · Owner: TBD (maintainer) · Lane: donated
+> Status: Draft · Version: 0.2.0 · Last updated: 2026-06-28 · Owner: TBD (maintainer) · Lane: donated
 
 Itemized backlog for the open knowledge graph of American Revolution patriots. See
 [`PLAN.md`](./PLAN.md) for context, the licensing gate, and the roadmap (M0–M3).
@@ -45,7 +45,8 @@ Each task below becomes an Elyos **Task JSON** validated against
 | revolutionary-patriots-kg-ontology-001 | Define core ontology (7 classes) mapped to schema.org/Wikidata | design-spec | small | low | document | — | Maintainer + domain reviewer |
 | revolutionary-patriots-kg-license-001 | Source allow-list schema + licensing-gate policy | design-spec | small | medium | document | — | License reviewer |
 | revolutionary-patriots-kg-license-002 | Analyze & record first 3 candidate sources (≥1 approved) | research | medium | medium | document | revolutionary-patriots-kg-license-001 | License reviewer |
-| revolutionary-patriots-kg-prov-001 | Ratify provenance mechanism (named-graphs+PROV-O vs RDF-star) | design-spec | small | low | document | revolutionary-patriots-kg-ontology-001 | Maintainer |
+| revolutionary-patriots-kg-prov-001 | Ratify provenance mechanism + define countable assertion unit | design-spec | small | low | document | revolutionary-patriots-kg-ontology-001 | Maintainer |
+| revolutionary-patriots-kg-iri-001 | Commit host-independent persistent IRI namespace (w3id.org/PURL) | design-spec | small | low | document | revolutionary-patriots-kg-ontology-001 | Maintainer |
 | revolutionary-patriots-kg-ci-001 | CI scaffold: SHACL + provenance-completeness linter | code | medium | low | pr | revolutionary-patriots-kg-ontology-001, revolutionary-patriots-kg-prov-001 | Maintainer |
 | revolutionary-patriots-kg-partner-001 | Steward outreach + DAR/SAR authorized-partnership contact | research | small | low | document | — | Maintainer |
 
@@ -66,14 +67,25 @@ Each task below becomes an Elyos **Task JSON** validated against
   - ≥3 sources analyzed with recorded license/PD determination; ≥1 marked `approved`.
   - At least one approved source is a NARA public-domain collection.
   - Any Wikipedia-derived use flagged for CC BY-SA attribution; Wikidata noted as CC0.
+- **revolutionary-patriots-kg-prov-001**
+  - One provenance mechanism chosen (named-graphs+PROV-O vs RDF-star) and applied uniformly.
+  - The countable **"assertion" unit** is defined explicitly (e.g., one named graph / reified
+    statement / RDF-star triple) so the 100%-provenance CI gate is mechanically checkable.
+- **revolutionary-patriots-kg-iri-001**
+  - A host-independent persistent identifier (w3id.org or PURL) is registered/committed as the
+    canonical IRI namespace, decoupled from the (unsecured) steward/host.
+  - Redirect strategy to the eventual host documented; no IRI minted under a host we do not control.
 - **revolutionary-patriots-kg-ci-001**
   - CI fails on any assertion lacking a provenance link.
   - CI runs SHACL validation against the ontology shapes.
   - CI rejects data referencing a source not marked `approved` in the allow-list.
 
 **M0 Definition of Done:** ontology v0 published; allow-list schema + policy merged with ≥3 sources
-analyzed and ≥1 approved; provenance mechanism ratified; CI provenance + SHACL gates live; partner
-and DAR/SAR outreach initiated with status logged. `pnpm build && pnpm test && pnpm lint` green.
+analyzed and ≥1 approved; provenance mechanism ratified **with the countable assertion unit defined**;
+**host-independent persistent IRI namespace committed**; CI provenance + SHACL gates live; partner and
+DAR/SAR outreach initiated with status logged; **a qualified License/ToS reviewer named (hard exit; if
+the seat is empty M0 cannot exit — escalate per the documented fallback in PLAN.md)**.
+`pnpm build && pnpm test && pnpm lint` green.
 
 ---
 
@@ -89,6 +101,11 @@ and DAR/SAR outreach initiated with status logged. `pnpm build && pnpm test && p
 
 **Acceptance criteria (key M1 tasks)**
 
+- **revolutionary-patriots-kg-extract-001**
+  - Honors a **per-source extraction-method policy**: human transcription for handwritten manuscripts
+    (pension depositions, service abstracts); OCR only for machine-print PD books.
+  - A **transcription-accuracy baseline** (per-method acceptance threshold) gates a batch before
+    normalization; the method used is recorded into each assertion's provenance.
 - **revolutionary-patriots-kg-data-001**
   - Records from one approved NARA batch are mapped to Person/Service/MilitaryUnit/Document nodes.
   - **100%** of new assertions carry a resolvable provenance link (source IRI + license + method).
@@ -96,14 +113,22 @@ and DAR/SAR outreach initiated with status logged. `pnpm build && pnpm test && p
   - Conflicting source statements are retained with separate provenance.
   - Passes CI (SHACL + provenance + allow-list) before review.
 - **revolutionary-patriots-kg-qa-001**
-  - A random sample of assertions is checked against the cited source; ≥95% verify.
+  - A **stratified** sample (min size ≥200 or whole release; strata by source-batch and extraction
+    method) is checked against the cited source; ≥95% verify.
+  - The **auditor is independent of the extractor** of the sampled records (no self-grading).
+  - Citations checked are page/image-level (collection-level citations rejected).
   - Any mis-citations or transcription errors are filed and block sign-off until fixed.
 - **revolutionary-patriots-kg-export-001**
   - Produces valid Turtle and JSON-LD with stable IRIs.
   - Export round-trips (re-import validates against SHACL); license metadata included.
 
+**M1 entry precondition (hard gate):** the NARA access path supplying the batch is named and recorded
+in the allow-list as a PD-clear, NARA-served digitization (**not** a Fold3/Ancestry-terms copy) before
+any extraction begins.
+
 **M1 Definition of Done:** end-to-end pipeline proven on one approved NARA batch; 100% provenance;
-citation audit ≥95%; exports produced and validated; ≥1 candidate steward in conversation.
+stratified citation audit (≥200, independent auditor) ≥95%; exports produced and validated under the
+persistent-IRI namespace; ≥1 candidate steward in conversation.
 
 ---
 
@@ -121,6 +146,9 @@ citation audit ≥95%; exports produced and validated; ≥1 candidate steward in
 
 - **revolutionary-patriots-kg-recon-002**
   - No automatic merge ships without human confirmation.
+  - Uses an explicit **blocking-key strategy** (e.g., normalized surname + service state/unit +
+    period) to generate candidate pairs; matcher tuned for precision over recall.
+  - **Zero confirmed false merges** in the dedup audit sample (precision target).
   - Merges preserve all source provenance from both records; reversible/auditable.
   - ≥40% of published persons carry a Wikidata QID after the pass.
 - **revolutionary-patriots-kg-explorer-001**
@@ -139,7 +167,7 @@ duplicate workflow operational; explorer + documented exports live; reuse metric
 | revolutionary-patriots-kg-data-002 | Integrate ≥3 more approved sources; scale to ≥5,000 persons | data | large | medium | dataset | revolutionary-patriots-kg-recon-002, revolutionary-patriots-kg-license-002 | Domain + license reviewers |
 | revolutionary-patriots-kg-partner-003 | Secure steward adoption + ≥1 documented citation/use | research | medium | low | document | revolutionary-patriots-kg-partner-002 | Maintainer |
 | revolutionary-patriots-kg-darsar-001 | Conclude & document DAR/SAR engagement outcome | research | small | medium | document | revolutionary-patriots-kg-partner-001 | License reviewer + maintainer |
-| revolutionary-patriots-kg-sustain-001 | Sustainability & persistent-IRI/hosting plan | writing | small | low | document | revolutionary-patriots-kg-partner-003 | Maintainer |
+| revolutionary-patriots-kg-sustain-001 | Sustainability, hosting + reviewer-rotation/throughput plan (IRI namespace committed in M0) | writing | small | low | document | revolutionary-patriots-kg-partner-003 | Maintainer |
 
 **Acceptance criteria (key M3 tasks)**
 

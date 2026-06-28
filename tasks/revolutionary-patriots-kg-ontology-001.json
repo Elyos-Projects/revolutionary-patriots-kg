@@ -1,0 +1,34 @@
+{
+  "id": "revolutionary-patriots-kg-ontology-001",
+  "title": "Define core ontology (7 classes) mapped to schema.org/Wikidata",
+  "project": "revolutionary-patriots-kg",
+  "type": "design-spec",
+  "lane": "donated",
+  "priority": "high",
+  "domain": ["open-history", "public-data", "education", "genealogy"],
+  "riskTier": "low",
+  "urgent": false,
+  "deliverable": "document",
+  "tokenEstimate": "small",
+  "status": "open",
+  "context": "An open, linked knowledge graph of American Revolution patriots needs a shared ontology before any data is ingested. Sources are public-domain primary records only (NARA pension/bounty-land/service records, Founders Online, LoC, state archives, copyright-expired lineage books) plus Wikidata/Wikipedia for reconciliation. Scraping DAR GRS or SAR PRS is out of scope. See PLAN.md.",
+  "objective": "Define the seven core classes (Person, Service, MilitaryUnit, Engagement, Place, Document, KinshipRelation) and their properties, reusing schema.org and Wikidata vocabulary wherever an equivalent exists, and modeling conflicting/contested claims rather than flattening them.",
+  "acceptanceCriteria": [
+    "All 7 classes defined with properties, datatypes, and cardinality.",
+    "Each class/property mapped to a schema.org and/or Wikidata equivalent where one exists; gaps documented.",
+    "KinshipRelation modeled to support source-conflicting kinship claims.",
+    "Conflicting-assertion representation specified (no single forced 'truth').",
+    "Published as a human-readable spec plus a machine artifact (OWL/SHACL stub).",
+    "Every entity reserves a provenance slot (source IRI + license) per the provenance model."
+  ],
+  "resources": [
+    "governance/proposals/revolutionary-patriots-kg.md",
+    "planning/projects/revolutionary-patriots-kg/PLAN.md",
+    "https://schema.org/",
+    "https://www.wikidata.org/"
+  ],
+  "output": "An ontology specification document (ontology/README.md) plus an OWL/SHACL stub defining the 7 classes and their schema.org/Wikidata mappings, committed via PR.",
+  "requestor": "jdev1977",
+  "verifiedNeed": false,
+  "outputLicense": "CC0-1.0"
+}
